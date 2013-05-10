@@ -2,7 +2,13 @@ syntax: glob
 *~
 .coverage
 *.egg
+*.egg-info
 *.orig
 *.pyc
 *.so
 *.swp
+__pycache__
+*.o
+*.a
+build
+dist

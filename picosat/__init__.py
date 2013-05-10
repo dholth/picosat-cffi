@@ -1,6 +1,8 @@
 import os.path
 import cffi
 
+from . import docstrings
+
 # preprocessed picosat.h
 picosat_h = """
 #define PICOSAT_API_VERSION ...
@@ -114,7 +116,7 @@ def _init():
     """Create cffi binding."""
     global _picosat, ffi
 
-    here = os.path.relpath(os.path.dirname(os.path.abspath(__file__)))
+    here = os.path.join(os.path.dirname(__file__), '..')
     lib = str(os.path.join(here, "picosat-956"))
     source = str(os.path.join(lib, "picosat.c"))
     ffi = cffi.FFI()
@@ -134,10 +136,11 @@ def _init():
     picosat_type = ffi.typeof("PicoSAT *")
     
     # Add all functions taking PicoSAT * as their first argument...
-    def genfn(f, name):
+    def genfn(f, name, docstring=''):
         def pico(self, *args):
             return f(self._picosat, *args)
         pico.func_name = name
+        pico.__doc__ = docstring
         return pico
 
     prefix = 'picosat_'
@@ -151,9 +154,11 @@ def _init():
                 or not func_type.args
                 or func_type.args[0] != picosat_type):
             continue
-        setattr(PicoSAT, short_name, genfn(func, short_name))
+        setattr(PicoSAT, short_name, 
+                genfn(func, short_name, 
+                    docstrings.doc.get(fname, '')))
 
     for cname in (n for n in dir(_picosat) if n.startswith('PICOSAT_')):
         setattr(PicoSAT, cname[8:], getattr(_picosat, cname))
-        
+
 _init()

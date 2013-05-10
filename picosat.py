@@ -108,7 +108,7 @@ class PicoSAT(object):
         return _picosat.picosat_pop(self._picosat)
 
     def print_(self, f):
-        return _picosat.picosat_print(self._picosat, ffi.cast("FILE*, f))
+        return _picosat.picosat_print(self._picosat, ffi.cast("FILE*", f))
 
 def _init():
     """Create cffi binding."""

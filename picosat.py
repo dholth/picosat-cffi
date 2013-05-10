@@ -107,7 +107,7 @@ def _init():
     """Create cffi binding."""
     global _picosat, ffi
 
-    here = os.path.relpath(os.path.dirname(__file__))
+    here = os.path.relpath(os.path.dirname(os.path.abspath(__file__)))
     lib = str(os.path.join(here, "picosat-956"))
     source = str(os.path.join(lib, "picosat.c"))
     ffi = cffi.FFI()

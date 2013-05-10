@@ -103,6 +103,13 @@ class PicoSAT(object):
     def __del__(self):
         _picosat.picosat_reset(self._picosat)
 
+    def pop(self):
+        assert self.context() > 0 # or library aborts
+        return _picosat.picosat_pop(self._picosat)
+
+    def print_(self, f):
+        return _picosat.picosat_print(self._picosat, ffi.cast("FILE*, f))
+
 def _init():
     """Create cffi binding."""
     global _picosat, ffi

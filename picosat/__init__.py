@@ -1,7 +1,7 @@
 import os.path
 import cffi
 
-from . import docstrings
+from picosat import docstrings
 
 # preprocessed picosat.h
 picosat_h = """
@@ -117,8 +117,8 @@ def _init():
     global _picosat, ffi
 
     here = os.path.join(os.path.dirname(__file__), '..')
-    lib = str(os.path.join(here, "picosat-956"))
-    source = str(os.path.join(lib, "picosat.c"))
+    lib = str(os.path.normpath(os.path.join(here, "picosat-956")))
+    source = str(os.path.normpath(os.path.join(lib, "picosat.c")))
     ffi = cffi.FFI()
     ffi.cdef(picosat_h)
     _picosat = ffi.verify(""" 

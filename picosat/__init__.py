@@ -1,4 +1,4 @@
-# Python binding Copyright (c) 2013 Daniel Holth
+# Python binding copyright (c) 2013 Daniel Holth
 #
 # PicoSAT copyright (c) 2006 - 2012, Armin Biere, Johannes Kepler University.
 #
@@ -19,6 +19,8 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
+
+__all__ = ['PicoSAT', 'ffi']
 
 import os.path
 import cffi
@@ -46,10 +48,13 @@ typedef void * (*picosat_malloc)(void *, size_t);
 typedef void * (*picosat_realloc)(void*, void *, size_t, size_t);
 typedef void (*picosat_free)(void*, void*, size_t);
 PicoSAT * picosat_init (void);
-PicoSAT * picosat_minit (void * state,
-    picosat_malloc,
-    picosat_realloc,
-    picosat_free);
+
+// Probably not very useful from Python:
+// PicoSAT * picosat_minit (void * state,
+//     picosat_malloc,
+//     picosat_realloc,
+//     picosat_free);
+
 void picosat_reset (PicoSAT *);
 void picosat_set_output (PicoSAT *, FILE *);
 void picosat_measure_all_calls (PicoSAT *);
@@ -156,15 +161,41 @@ def _init():
             sources=[source])
 
     picosat_type = ffi.typeof("PicoSAT *")
+    # picosat returns zero-terminated lists as int *
+    int_p = ffi.typeof("const int *")
     
-    # Add all functions taking PicoSAT * as their first argument...
-    def genfn(f, name, docstring=''):
+    def returns_ztl(f):
+        def ztl_to_list(*args):
+            """
+            Return Python list from a zero-terminated list.
+            """
+            result = []
+            ztl = f(*args)
+            i = 0
+            while ztl[i] != 0:
+                i += 1
+                result.append(ztl[i])
+            return result
+        return ztl_to_list
+
+    def genfn(f, f_type, name, docstring=None):
+        if f_type.result == int_p:
+            f = returns_ztl(f)
         def pico(self, *args):
             return f(self._picosat, *args)
         pico.func_name = name
         pico.__doc__ = docstring
         return pico
-
+    
+    def genstatic(f, f_type, name, docstring=None):
+        def picostatic(*args):
+            return f(*args)
+        picostatic.func_name = name
+        picostatic.__doc__ = docstring
+        return staticmethod(picostatic)
+    
+    # Add all functions taking PicoSAT * as their first argument as methods 
+    # of PicoSAT; add other picosat_ functions as static methods.
     prefix = 'picosat_'
     for fname in (n for n in dir(_picosat) if n.startswith(prefix)):
         func = getattr(_picosat, fname)
@@ -175,12 +206,15 @@ def _init():
         if (hasattr(PicoSAT, short_name)
                 or not func_type.args
                 or func_type.args[0] != picosat_type):
-            continue
-        setattr(PicoSAT, short_name, 
-                genfn(func, short_name, 
-                    docstrings.doc.get(fname, '')))
+            new_func = genstatic(func, func_type, short_name, 
+                                 docstrings.doc.get(fname))
+        else:
+            new_func = genfn(func, func_type, short_name, 
+                             docstrings.doc.get(fname)) 
+        setattr(PicoSAT, short_name, new_func)
 
-    for cname in (n for n in dir(_picosat) if n.startswith('PICOSAT_')):
-        setattr(PicoSAT, cname[8:], getattr(_picosat, cname))
+    const_prefix = 'PICOSAT_'
+    for cname in (n for n in dir(_picosat) if n.startswith(const_prefix)):
+        setattr(PicoSAT, cname[len(const_prefix):], getattr(_picosat, cname))
 
 _init()

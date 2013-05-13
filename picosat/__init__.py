@@ -125,7 +125,17 @@ void picosat_write_rup_trace (PicoSAT *, FILE * trace_file);
 int picosat_usedlit (PicoSAT *, int lit);
 """
 
+class StateError(Exception):
+    """PicoSAT is in the wrong state for this API call."""
+
 class PicoSAT(object):
+    # Return codes for get_state():
+    STATE_RESET = 0
+    STATE_READY = 1
+    STATE_SAT = 2
+    STATE_UNSAT = 3
+    STATE_UNKNOWN = 4
+    
     def __init__(self):
         self._picosat = _picosat.picosat_init()
 
@@ -138,6 +148,34 @@ class PicoSAT(object):
 
     def print_(self, f):
         return _picosat.picosat_print(self._picosat, ffi.cast("FILE*", f))
+    
+    def add_clause(self, literals):
+        """
+        Add an entire clause from a Python iterable yielding 
+        (non-zero-terminated) integers. add_clause appends the
+        terminating 0.
+        """
+        for lit in literals:
+            self.add(lit)
+        return self.add(0)
+        
+    def add_clauses(self, clauses):
+        """
+        Call add_clause(clause) for clause in clauses. Return result of final 
+        add_clause() call or None if clauses was empty.
+        """
+        rc = None
+        for clause in clauses:
+            rc = self.add_clause(clause)
+        return rc
+    
+    def get_solution(self):
+        """
+        If state is PicoSAT.STATE_SAT, return solution as a list()
+        """
+        if self.get_state() != self.STATE_SAT:
+            raise StateError()
+        return [self.deref(i)*i for i in range(1, self.variables()+1)]
 
 def _init():
     """Create cffi binding."""
